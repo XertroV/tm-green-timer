@@ -1,0 +1,9 @@
+[meta]
+name     = "Green Timer"
+author   = "XertroV"
+category = "Utilities"
+version  = "0.1.5"
+
+[script]
+#__DEFINES__
+# dependencies = ["MLHook", "MLFeedRaceData"]

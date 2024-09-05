@@ -31,16 +31,22 @@ bool S_TimerActive = true;
 bool S_HideWhenUIOff = false;
 
 [Setting hidden]
-bool S_PauseInMenu = false;
+bool S_PauseInMenu = true;
 
 [Setting hidden]
 bool S_PauseInEditor = false;
 
 [Setting hidden]
-bool S_PauseWhileLoading = false;
+bool S_PauseWhileLoading = true;
 
 [Setting hidden]
-uint64 g_TimerMs = 0;
+bool S_CountUp = true;
+
+[Setting hidden]
+bool S_NotifyOnFinish = true;
+
+[Setting hidden]
+int64 g_TimerMs = 0;
 
 int f_Nvg_ExoBold = nvg::LoadFont("Exo-Bold.ttf", true, true);
 
@@ -61,23 +67,50 @@ namespace GreenTimer {
         uint64 delta;
         delta = lastRenderTime == 0 ? 0 : Time::Now - lastRenderTime;
         lastRenderTime = Time::Now;
-        g_TimerMs += delta;
+        int sign = g_TimerMs < 0 ? -1 : 1;
+        if (S_CountUp) {
+            g_TimerMs += delta;
+        } else {
+            g_TimerMs -= delta;
+        }
+        int signAfter = g_TimerMs < 0 ? -1 : 1;
         pausedThisFrame = false;
+
+        if (sign != signAfter) {
+            if (S_NotifyOnFinish) {
+                UI::ShowNotification("Timer reached 0", "\n\n\t\tTIMER DONE!\n\n\n", S_GreenTimerColor, 5000);
+            }
+        }
     }
 
+    string tmpPauseReason = "";
+
+    // Pause during loading, menu, editor, map, etc
     bool IsTempPaused() {
         auto app = GetApp();
+        if (tmpEditingPauseActive) {
+            tmpPauseReason = "Editing timer";
+            return true;
+        }
         bool inPG = app.CurrentPlayground !is null;
         if (S_PauseInEditor && (app.Editor !is null && !inPG)) {
+            tmpPauseReason = "in Editor";
             return true;
         }
         if (S_PauseInMenu && (app.Switcher.ModuleStack.Length < 1 || cast<CTrackManiaMenus>(app.Switcher.ModuleStack[0]) !is null)) {
+            tmpPauseReason = "in Menu";
             return true;
         }
         if (S_PauseWhileLoading && app.LoadProgress.State == NGameLoadProgress::EState::Displayed) {
+            tmpPauseReason = "Loading Screen";
             return true;
         }
+        tmpPauseReason = tmpEditingPauseActive ? "Editing timer" : "Manually Paused";
         return false;
+    }
+
+    string TmpPausedReason() {
+        return tmpPauseReason;
     }
 
     vec4 Render() {
@@ -145,6 +178,9 @@ namespace GreenTimer {
         }
     }
 
+    // Pause during editing
+    bool tmpEditingPauseActive = false;
+
     void DrawSettingsInner() {
         if (!S_TimerActive && UI::Button("Start")) {
             S_TimerActive = true;
@@ -154,6 +190,13 @@ namespace GreenTimer {
             setTimerTo = "";
         }
 
+        if (IsTempPaused()) {
+            UI::SameLine();
+            UI::Text("\\$iPaused reason: " + TmpPausedReason());
+        }
+
+        UI::SeparatorText("General Settings");
+
         S_ShowGreenTimer = UI::Checkbox("Show Green Timer", S_ShowGreenTimer);
         S_HideWhenUIOff = UI::Checkbox("Hide When UI Off", S_HideWhenUIOff);
 
@@ -162,6 +205,8 @@ namespace GreenTimer {
         S_PauseWhileLoading = UI::Checkbox("Pause While Loading", S_PauseWhileLoading);
 
         S_DragableMode = UI::Checkbox("Dragable Mode", S_DragableMode);
+
+        UI::SeparatorText("Visual Settings");
 
         S_GreenTimerColor = UI::InputColor4("Running Color", S_GreenTimerColor);
         UI::SameLine();
@@ -175,21 +220,39 @@ namespace GreenTimer {
             S_GreenTimerPausedColor = cGray;
         }
 
-
         S_GreenTimerFontSize = UI::SliderFloat("Font Size", S_GreenTimerFontSize, 10, 200);
         S_GreenTimerPos = UI::InputFloat2("Pos (0-1)", S_GreenTimerPos);
         S_GreenTimerAlign = InputAlign("Align", S_GreenTimerAlign);
         S_GreenTimerBg = UI::Checkbox("Semi-transparent Background", S_GreenTimerBg);
+
+        UI::SeparatorText("Set Timer");
+
+        S_CountUp = UI::Checkbox("Count Up", S_CountUp);
+        UI::Indent();
+        UI::Text(S_CountUp ? "\\$iCounting up" : "\\$iCounting down");
+        UI::Unindent();
+
+        S_NotifyOnFinish = UI::Checkbox("Notify when Timer reaches 0", S_NotifyOnFinish);
 
         string curr = Time::Format(g_TimerMs, false, true, true);
         if (setTimerTo == "") setTimerTo = curr;
         UI::Text("Current Timer: " + curr);
         bool changed = false;
         setTimerTo = UI::InputText("Set Timer To", setTimerTo, changed);
-        bool focused = UI::IsItemFocused();
+        bool textFieldActive = UI::IsItemActive();
+
+        if (textFieldActive && tmpEditingPauseActive) {
+            // do nothing
+        } else if (textFieldActive && S_TimerActive) {
+            // tmp pause
+            tmpEditingPauseActive = true;
+        } else if (!textFieldActive && tmpEditingPauseActive) {
+            tmpEditingPauseActive = false;
+        }
+
         if (changed) {
             tryUpdateTimeInMap(setTimerTo);
-        } else if (!focused) {
+        } else if (!textFieldActive) {
             setTimerTo = curr;
         }
         if (parseErr != "") {
@@ -209,7 +272,9 @@ namespace GreenTimer {
             int hours = Text::ParseInt(parts[0]);
             int min = Text::ParseInt(parts[1]);
             int sec = Text::ParseInt(parts[2]);
-            g_TimerMs = (hours * 3600 + min * 60 + sec) * 1000;
+            int sign = (hours < 0 || parts[0].StartsWith("-")) ? -1 : 1;
+            hours = Math::Abs(hours);
+            g_TimerMs = (hours * 3600 + min * 60 + sec) * 1000 * sign;
             parseErr = "";
         } catch {
             parseErr = "exception: " + getExceptionInfo();

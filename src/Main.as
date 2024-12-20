@@ -94,3 +94,10 @@ void DrawCenteredText(const string &in msg, vec2 size, vec2 uv) {
 void R_Settings_General() {
     GreenTimer::DrawSettingsInner();
 }
+
+void RenderMenu() {
+    string extra = "\\$999 (" + (S_ShowGreenTimer ? "Active" : "Hidden") + ")"; //  + " / " + GreenTimer::lastGreenTimerText + ")";
+    if (UI::MenuItem("\\$7f7" + Icons::ClockO + " Green Timer" + extra, "", S_ShowGreenTimer)) {
+        S_ShowGreenTimer = !S_ShowGreenTimer;
+    }
+}

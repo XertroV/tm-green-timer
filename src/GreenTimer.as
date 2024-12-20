@@ -125,12 +125,14 @@ namespace GreenTimer {
         return r;
     }
 
+    string lastGreenTimerText = "";
+
     vec4 _DrawGreenTimer(vec2 pos, int align) {
         nvg::TextAlign(align);
-        string label = Time::Format(g_TimerMs, false, true, true);
-        if (label.Length < 8) label = "0" + label;
-        vec2 bounds = nvg::TextBounds(label.Length > 8 ? "000:00:00" : "00:00:00");
-        int nbDigits = label.Length > 8 ? 7 : 6;
+        lastGreenTimerText = Time::Format(g_TimerMs, false, true, true);
+        if (lastGreenTimerText.Length < 8) lastGreenTimerText = "0" + lastGreenTimerText;
+        vec2 bounds = nvg::TextBounds(lastGreenTimerText.Length > 8 ? "000:00:00" : "00:00:00");
+        int nbDigits = lastGreenTimerText.Length > 8 ? 7 : 6;
         vec2 smallBounds = nvg::TextBounds("00");
         float digitWidth = smallBounds.x / 2.;
         float colonWidth = (bounds.x - digitWidth * nbDigits) / 2.;
@@ -150,7 +152,7 @@ namespace GreenTimer {
         nvg::TextAlign(nvg::Align::Top | nvg::Align::Left);
         auto textColor = !pausedThisFrame ? S_GreenTimerColor : S_GreenTimerPausedColor;
 
-        auto parts = label.Split(":");
+        auto parts = lastGreenTimerText.Split(":");
         string p;
         vec2 adj = vec2(0, 0);
         for (uint i = 0; i < parts.Length; i++) {
@@ -257,6 +259,10 @@ namespace GreenTimer {
         }
         if (parseErr != "") {
             UI::TextWrapped("\\$f80Parse Error: " + parseErr);
+        }
+
+        if (UI::Button("Reset to 0:00:00")) {
+            g_TimerMs = 0;
         }
     }
 

@@ -50,6 +50,24 @@ int64 g_TimerMs = 0;
 
 int f_Nvg_ExoBold = nvg::LoadFont("Exo-Bold.ttf", true, true);
 
+const string GetTimerTemplateStr(int len) {
+    switch (len) {
+        case 7: return "0:00:00";
+        case 8: return "00:00:00";
+        case 9: return "000:00:00";
+        case 10: return "0000:00:00";
+        case 11: return "00000:00:00";
+        case 12: return "000000:00:00";
+        case 13: return "0000000:00:00";
+        case 14: return "00000000:00:00";
+        case 15: return "000000000:00:00";
+        case 16: return "0000000000:00:00";
+        case 17: return "00000000000:00:00";
+        case 18: return "000000000000:00:00";
+    }
+    return "00:00:00";
+}
+
 namespace GreenTimer {
     vec2[] extraPos = {};
 
@@ -131,8 +149,8 @@ namespace GreenTimer {
         nvg::TextAlign(align);
         lastGreenTimerText = Time::Format(g_TimerMs, false, true, true);
         if (lastGreenTimerText.Length < 8) lastGreenTimerText = "0" + lastGreenTimerText;
-        vec2 bounds = nvg::TextBounds(lastGreenTimerText.Length > 8 ? "000:00:00" : "00:00:00");
-        int nbDigits = lastGreenTimerText.Length > 8 ? 7 : 6;
+        vec2 bounds = nvg::TextBounds(GetTimerTemplateStr(lastGreenTimerText.Length));
+        int nbDigits = lastGreenTimerText.Length - 2;
         vec2 smallBounds = nvg::TextBounds("00");
         float digitWidth = smallBounds.x / 2.;
         float colonWidth = (bounds.x - digitWidth * nbDigits) / 2.;
@@ -157,11 +175,14 @@ namespace GreenTimer {
         vec2 adj = vec2(0, 0);
         for (uint i = 0; i < parts.Length; i++) {
             p = parts[i];
+            // draw digits
             for (int c = 0; c < p.Length; c++) {
+                // if 1, add a small offset so it's not too far left
                 adj.x = p[c] == 0x31 ? digitWidth / 4 : 0;
                 DrawTextWithShadow(textTL+adj, p.SubStr(c, 1), textColor);
                 textTL.x += digitWidth;
             }
+            // after each part, add a colon
             if (i < 2) {
                 DrawTextWithShadow(textTL, ":", textColor);
                 textTL.x += colonWidth;
@@ -275,11 +296,11 @@ namespace GreenTimer {
                 parseErr = "format: h:mm:ss";
                 return;
             }
-            int hours = Text::ParseInt(parts[0]);
-            int min = Text::ParseInt(parts[1]);
-            int sec = Text::ParseInt(parts[2]);
-            int sign = (hours < 0 || parts[0].StartsWith("-")) ? -1 : 1;
-            hours = Math::Abs(hours);
+            int64 hours = Text::ParseInt64(parts[0]);
+            int64 min = Text::ParseInt64(parts[1]);
+            int64 sec = Text::ParseInt64(parts[2]);
+            int64 sign = (hours < 0 || parts[0].StartsWith("-")) ? -1 : 1;
+            hours = hours < 0 ? -hours : hours;
             g_TimerMs = (hours * 3600 + min * 60 + sec) * 1000 * sign;
             parseErr = "";
         } catch {

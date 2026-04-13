@@ -1,5 +1,6 @@
 void Main() {
     startnew(LoadFonts);
+    History::loadTimers();
 }
 
 // UI::Font@ f_MonoSpace = null;
@@ -17,7 +18,7 @@ void LoadFonts() {
 vec2 g_screen;
 
 void RenderEarly() {
-    g_screen = vec2(Draw::GetWidth(), Draw::GetHeight());
+    g_screen = vec2(Display::GetWidth(), Display::GetHeight());
     GreenTimer::Update();
 }
 
@@ -83,7 +84,7 @@ vec2 Round3Dps(vec2 v) {
 
 
 void DrawCenteredText(const string &in msg, vec2 size, vec2 uv) {
-    auto bounds = Draw::MeasureString(msg, f_Droid, 16., 0.0f) * UI::GetScale();
+    auto bounds = UI::MeasureString(msg, f_Droid, 16., 0.0f) * UI::GetScale();
     auto pos = size * uv - vec2(bounds.x, 16.) / 2. + vec2(0, 2.);
     UI::SetCursorPos(pos);
     UI::Text(msg);

@@ -205,6 +205,19 @@ namespace GreenTimer {
     bool tmpEditingPauseActive = false;
 
     void DrawSettingsInner() {
+
+        UI::BeginTabBar("GreenTimerSettingsTabBar");
+        if (UI::BeginTabItem("Settings")) {
+            UI::EndTabItem();
+        }
+
+        if (UI::BeginTabItem("Saved Timers")) {
+            History::DrawHistoryInner();
+            UI::EndTabItem();
+            UI::EndTabBar();
+            return;
+        }
+
         if (!S_TimerActive && UI::Button("Start")) {
             S_TimerActive = true;
             setTimerTo = "";
@@ -285,6 +298,8 @@ namespace GreenTimer {
         if (UI::Button("Reset to 0:00:00")) {
             g_TimerMs = 0;
         }
+
+        UI::EndTabBar();
     }
 
     string parseErr;
